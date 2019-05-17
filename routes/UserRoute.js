@@ -51,7 +51,7 @@ async function(req, res) {
         // start
         // Compose email
         var data = {
-          from: 'Majasave  <postmaster@sandboxf985d93400124d7ea521a86b754d6de9.mailgun.org>',
+          from: 'Majasave  <>',
           to: checkUser.email,
           subject: 'Verify your account',
           text: 'Verify your account',
@@ -104,7 +104,7 @@ async function(req, res) {
     
     // Compose email
     var data = {
-      from: 'Majasave  <postmaster@sandboxf985d93400124d7ea521a86b754d6de9.mailgun.org>',
+      from: 'Majasave  <>',
       to: 't.banji@rocketmail.com',
       subject: 'Verify your account',
       text: `Hi there,
