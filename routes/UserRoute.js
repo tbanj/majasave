@@ -1,6 +1,6 @@
 const express = require('express');
-
-   
+const axios = require('axios');
+const sgMail = require('@sendgrid/mail');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const UserModel = require('../models/UserModel');
@@ -11,7 +11,6 @@ const JoiValidator = require('../middlewares/validator');
 
 const { CreateUserValidator } = require('../validators/UserValidator');
 const env = require('../env');
-var mailgun = require('mailgun-js')({apiKey: env.api_key, domain: env.domain});
 const router = express.Router();
 
 
@@ -20,14 +19,16 @@ const isAuthenticated = (req, res, next) => {
   if (req.isAuthenticated()) {
     return next();
   } else {
-    req.flash('error', 'Sorry, but you must be registered first !');
+    console.log('error:'+ 'Sorry, but you must be registered first !');
+    
     res.redirect('/');
   }
 };
 
 const isNotAuthenticated = (req, res, next) => {
   if (req.isAuthenticated()) {
-    req.flash('error', 'Sorry, but you are already logged in!');
+    console.log('error'+ 'Sorry, but you are already logged in!');
+    
     res.redirect('user/signin');
   } else {
     return next();
@@ -48,35 +49,39 @@ async function(req, res) {
     const checkUser = await UserModel.findOne({ 'email': req.body.email });
     if (checkUser) {
       if(checkUser !== null && checkUser.is_active === false){
-        // start
         // Compose email
-        var data = {
-          from: 'Majasave  <>',
+        sgMail.setApiKey(env.sendgrid_api_key);
+        const msg = {
           to: checkUser.email,
-          subject: 'Verify your account',
-          text: 'Verify your account',
-      text: `Hi there,
-      Thank you for registering!
-      Please verify your email by typing the following token:
-      Token: ${result.secret_token}
-      On the following page: http://localhost:3000/user/verify
-      Have a pleasant day.`
+          from: 'info@majasave.com',
+          subject: 'Verify your majasave account sendgrid',
+          text: 'and easy to do anywhere, even with Node.js',
+          text: `Hi ${req.body.first_name},
+          Thank you for registering!
+          Please verify your email by typing the following token:
+          Token: ${result.secret_token}
+          On the following page: http://localhost:3000/user/verify
+          Have a pleasant day.`,
+          html: `<p>Hi ${req.body.first_name},
+            Thank you for registering!
+            Please verify your email by typing the following token:<br>
+            Token id: <strong> ${result.secret_token}</strong> <br>
+            On the following page: http://localhost:3000/user/verify
+            Have a pleasant day.</p>`,
         };
+        sgMail.send(msg);
         
-        mailgun.messages().send(data, function (error, body) {
-          console.log(body);
-        });
-        // end 
+        
+
         res.status(201).json({
           status: '402', 
           message: 'email already exist check your email to verify',
           
         })
       }
-      else {res.status(200).json({
+      else {res.status(203).json({
         status: 'success', 
         message: 'email already exist, you have already verified please login',
-        
       });}
       
       return true;
@@ -103,23 +108,29 @@ async function(req, res) {
     });
     
     // Compose email
-    var data = {
-      from: 'Majasave  <>',
-      to: 't.banji@rocketmail.com',
-      subject: 'Verify your account',
-      text: `Hi there,
+
+
+    sgMail.setApiKey(env.sendgrid_api_key);
+    const msg = {
+      to: req.body.email,
+      from: 'info@majasave.com',
+      subject: 'Verify your majasave account sendgrid',
+      text: 'and easy to do anywhere, even with Node.js',
+      text: `Hi ${req.body.first_name},
       Thank you for registering!
       Please verify your email by typing the following token:
       Token: ${result.secret_token}
       On the following page: http://localhost:3000/user/verify
-      Have a pleasant day.`
+      Have a pleasant day.`,
+      html: `<p>Hi ${req.body.first_name},
+        Thank you for registering!<br>
+        Please verify your email by typing the following token:
+        Token: <strong>${result.secret_token}</strong><br>
+        On the following page: http://localhost:3000/user/verify
+        Have a pleasant day.</p>`,
     };
-    
-    mailgun.messages().send(data, function (error, body) {
-      console.log(body);
-    });
+        sgMail.send(msg);
 
-        
 
     res.status(200).json({
       status: 'success',
@@ -138,6 +149,54 @@ async function(req, res) {
      
   }
 });
+
+
+
+// verification of account number
+router.post('/verify_account', async function (req, res){
+  console.log(req.body);
+  const user_bank = req.body.bank_name;
+  const account_number = req.body.account_number;
+  console.log(account_number);
+
+  // use set
+  detail_code =new Set();
+  const verify_info = await axios.get('https://api.paystack.co/bank')
+  .then(function (response) { 
+        const verify_detail =response.data.data;
+        return verify_detail;
+    })
+    .catch(error=> console.log(error));
+  
+  verify_info.forEach(data => {
+  detail_code.add({bank_name: data['name'], slug: data['slug'], code: data['code']});
+    
+  if(user_bank===data['slug']) {
+        console.log(`bank code is ${data['code']} and bank name ${data['name']}`);
+        const user_bank_code= data['code'];
+        console.log(user_bank_code);
+
+        var check_account;
+        axios.get(`https://api.paystack.co/bank/resolve?account_number=${account_number}&bank_code=${data['code']}`, 
+        {headers: {Authorization:`Bearer ${env.paystack_secret_key}`}})
+        .then(async function (response){console.log(response.data);
+          // const check_res =await response.data;
+          check_account = await response.data;
+          res.status(200).json({check_account});
+
+          })
+        .catch(async function(error) {console.log(error.response.data);
+              check_account = await error.response.data;
+        
+              res.status(422).json({check_account});
+        })
+    }
+
+});
+  
+}); 
+
+
 
 // admin signup
 router.post('/', AuthMiddleware,async function(req, res) {
@@ -289,6 +348,7 @@ router.put('/:email', AuthMiddleware, async function(req, res) {
   }
 });
 
+
 // Delete a user
 router.delete('/:email', AuthMiddleware, async function(req, res) {
   try {
@@ -316,6 +376,7 @@ router.delete('/:email', AuthMiddleware, async function(req, res) {
     });
   }
 });
+
 
 // Get a user by email
 router.get('/:email', AuthMiddleware,async function(req, res) {
