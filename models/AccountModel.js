@@ -4,8 +4,8 @@ const mongoose = require('mongoose');
  * Mongoose Account schema which is a description/blueprint of how we want our data to look like
  */
 const AccountSchema = new mongoose.Schema({
-  account_num: {
-    type: Number,
+  account_number: {
+    type: String,
     required: true,
   },
   account_name: {
@@ -20,6 +20,7 @@ const AccountSchema = new mongoose.Schema({
 
   current_balance: {
     type: Number,
+    default: 0
   },
 
   created_date: {
@@ -28,6 +29,14 @@ const AccountSchema = new mongoose.Schema({
 
   updated_date: {
     type: Date,
+    default: null
+  },
+  updated_by: {
+    type:String,
+    default: null
+  },
+  created_by: {
+    type: String,
   },
   success_alert: {
     type: Number,
@@ -35,6 +44,12 @@ const AccountSchema = new mongoose.Schema({
 
   target_saving: {
     type: Number,
+  },
+
+  user: {
+    // The user ID
+    type: String,
+    required: true,
   },
   
   safe_lock: {

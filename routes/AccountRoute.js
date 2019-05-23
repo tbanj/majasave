@@ -1,6 +1,8 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const AccountModel = require('../models/AccountModel');
+const axios = require('axios');
+const env = require('../env')
 const AuthMiddleware = require('../middlewares/auth');
 const JoiValidator = require('../middlewares/validator');
 const { CreateAccountValidator } = require('../validators/AccountValidator');
@@ -17,10 +19,11 @@ router.post(
         // using spread operator 
         ...req.body,
         createddate: new Date(),
-        employee: req.user,
+        user: req.user,
         
       });
-      console.log(req.body.approvemessage);
+
+      
       
       res.json({ status: 'success', data: account });
     } catch (err) {
@@ -32,6 +35,84 @@ router.post(
     }
   }
 );
+
+// verification of account number
+router.post('/verify_account',AuthMiddleware, async function (req, res){
+  // use set
+  detail_code =new Set();
+  const verify_info = await axios.get('https://api.paystack.co/bank')
+    .then(function (response) { 
+          const verify_detail =response.data.data;
+          return verify_detail;
+      })
+      .catch(error=> console.log(error));
+      let bank_detail_confirm;
+    verify_info.forEach(data => {
+      detail_code.add({bank_name: data['name'], slug: data['slug'], code: data['code']});
+
+      var check_account;
+      if(req.body.bank_name===data['slug']) {
+        console.log(`bank code is ${data['code']} and bank name ${data['name']}`);
+        const user_bank_code= data['code'];
+        console.log(user_bank_code);
+
+        
+        bank_detail_confirm = axios.get(`https://api.paystack.co/bank/resolve?account_number=${req.body.account_number}&bank_code=${data['code']}`, 
+        {headers: {Authorization:`Bearer ${env.paystack_secret_key}`}})
+        .then(async function (response){
+          check_account = await response.data;
+           return check_account;
+
+          })
+        .catch(async function(error) {
+              
+              check_account = await error.response.data;
+              res.status(422).json({
+                status: 'error',
+                message: check_account,
+              });
+              console.error(error.response.data);
+              return false;
+        })
+      }
+
+    });
+        error_bank_detail_confirm = await bank_detail_confirm;
+        if(error_bank_detail_confirm === false){
+          console.log('it cant proceed further due to account number not verifiable');
+          return;
+        }
+        bank_detail_confirm.then(async function(result) { 
+        const accountdl = await AccountModel.findOne({'account_number': req.body.account_number});
+            if (accountdl) {
+                console.log('new user');
+                  res.status(203).json({
+                  status: 'success', 
+                  message: 'account verification has been earlier completed',
+                });
+                return true;
+            } 
+      
+            const new_account= await AccountModel.create({
+              // using spread operator 
+              ...req.body,
+              account_number: result.data.account_number,
+              account_name: result.data.account_name,
+              bank_name: req.body.bank_name,
+              createddate: new Date(),
+              user: req.user,
+              
+            });
+            res.json({ 
+              status: 'success', 
+              account_verify: result, 
+              data: new_account });
+            
+         }).catch(error=>{console.log(error)});
+  
+}); 
+
+
 
 router.put('/:id/public', AuthMiddleware, async (req, res) => {
   try {
@@ -123,6 +204,26 @@ router.get('/user', AuthMiddleware,async function(req, res) {
     });
   }
 });
+
+
+// Get's a user's profile
+router.get('/profile', AuthMiddleware, async function(req, res) {
+  try {
+    console.log(req.user);
+    const account = await AccountModel.findById(req.user);
+    const result = account.toJSON();
+    
+    delete result.password;
+
+    res.json({ status: 'success', data: result });
+  } catch (err) {
+    console.log(err);
+
+    res.status(401).json({ status: 'error', message: err.message });
+  }
+});
+
+
 
 
 router.get('', AuthMiddleware,async function(req, res) {

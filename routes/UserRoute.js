@@ -48,6 +48,8 @@ async function(req, res) {
     // Checking if email is already taken
     const checkUser = await UserModel.findOne({ 'email': req.body.email });
     if (checkUser) {
+      console.log(checkUser);
+      
       if(checkUser !== null && checkUser.is_active === false){
         // Compose email
         sgMail.setApiKey(env.sendgrid_api_key);
@@ -98,6 +100,7 @@ async function(req, res) {
         is_active: false});
 
     const result = user.toJSON();
+    console.log(result.user_image);
     
     delete result.password;
 
@@ -108,8 +111,6 @@ async function(req, res) {
     });
     
     // Compose email
-
-
     sgMail.setApiKey(env.sendgrid_api_key);
     const msg = {
       to: req.body.email,
@@ -152,49 +153,7 @@ async function(req, res) {
 
 
 
-// verification of account number
-router.post('/verify_account', async function (req, res){
-  console.log(req.body);
-  const user_bank = req.body.bank_name;
-  const account_number = req.body.account_number;
-  console.log(account_number);
 
-  // use set
-  detail_code =new Set();
-  const verify_info = await axios.get('https://api.paystack.co/bank')
-  .then(function (response) { 
-        const verify_detail =response.data.data;
-        return verify_detail;
-    })
-    .catch(error=> console.log(error));
-  
-  verify_info.forEach(data => {
-  detail_code.add({bank_name: data['name'], slug: data['slug'], code: data['code']});
-    
-  if(user_bank===data['slug']) {
-        console.log(`bank code is ${data['code']} and bank name ${data['name']}`);
-        const user_bank_code= data['code'];
-        console.log(user_bank_code);
-
-        var check_account;
-        axios.get(`https://api.paystack.co/bank/resolve?account_number=${account_number}&bank_code=${data['code']}`, 
-        {headers: {Authorization:`Bearer ${env.paystack_secret_key}`}})
-        .then(async function (response){console.log(response.data);
-          // const check_res =await response.data;
-          check_account = await response.data;
-          res.status(200).json({check_account});
-
-          })
-        .catch(async function(error) {console.log(error.response.data);
-              check_account = await error.response.data;
-        
-              res.status(422).json({check_account});
-        })
-    }
-
-});
-  
-}); 
 
 
 
@@ -231,11 +190,31 @@ router.post('/', AuthMiddleware,async function(req, res) {
 // Get's a user's profile
 router.get('/profile', AuthMiddleware, async function(req, res) {
   try {
-    //@ts-ignore
-    const user = await UsereModel.findById(req.user);
+    console.log(req.user);
+    const user = await UserModel.findById(req.user);
     const result = user.toJSON();
     
     delete result.password;
+    delete result.secret_token;
+
+    res.json({ status: 'success', data: result });
+  } catch (err) {
+    console.log(err);
+
+    res.status(401).json({ status: 'error', message: err.message });
+  }
+});
+
+// Post investment amount for savings plan
+router.get('/savings-packages', AuthMiddleware, async function(req, res) {
+  try {
+    console.log(req.header);
+    
+    const user = await UserModel.findById(req.user);
+    const result = user.toJSON();
+    
+    delete result.password;
+    delete result.secret_token;
 
     res.json({ status: 'success', data: result });
   } catch (err) {
@@ -246,13 +225,44 @@ router.get('/profile', AuthMiddleware, async function(req, res) {
 });
 
 // user signin
-router.post('/signin', (req, res, next) => {
+router.post('/signin', async function (req, res, next) {
 
   passport.authenticate('local', (e, user, info) => {
       if(e) return next(e);
       if(info) {
+       // Compose email
+          UserModel.findOne({ 'email': req.body.email })
+                              .then(response=>{
+                                const checkUser = response;
+                                console.log(checkUser.secret_token);
+                                sgMail.setApiKey(env.sendgrid_api_key);
+                                const msg = {
+                                  to: req.body.email,
+                                  from: 'info@majasave.com',
+                                  subject: 'Verify your majasave account sendgrid',
+                                  text: 'and easy to do anywhere, even with Node.js',
+                                  text: `Hi ${checkUser.first_name},
+                                  Thank you for registering!
+                                  Please verify your email by typing the following token:
+                                  Token: ${checkUser.secret_token}
+                                  On the following page: http://localhost:3000/user/verify
+                                  Have a pleasant day.`,
+                                  html: `<p>Hi ${checkUser.first_name},
+                                    Thank you for registering!<br>
+                                    Please verify your email by typing the following token:
+                                    Token: <strong>${checkUser.secret_token}</strong><br>
+                                    On the following page: http://localhost:3000/user/verify
+                                    Have a pleasant day.</p>`,
+                                };
+                                    sgMail.send(msg);
+                              }).
+                              catch(error=>{console.log(error);
+                              });
+          
+          
        
-       return res.send(info);}
+       return res.send(info);
+      }
       req.logIn(user, e => {
           if(e) return next(e);
           const token = jwt.sign({ id: user.id }, env.jwt_secret);
@@ -293,15 +303,13 @@ router.post('/verify', async function(req, res, next) {
 
     //  step 2
     user.is_active = true;
-    user.secretToken = '';
+    user.secret_token = '';
     await user.save();
     res.status(200).json({
       status: 'success',
       message: 'user found, account has been verified . 😭',
     });
-
-    // req.flash('success', 'Thank you! Now you may login.');
-    // res.redirect('/user/signin');
+;
   } catch(error) {
     console.log(error);
     res.status(500).json({
@@ -313,7 +321,18 @@ router.post('/verify', async function(req, res, next) {
 });
 
 
-
+// router.get('/dashboard', AuthMiddleware, async function(req, res) {
+//   // try {
+//   //   console.log('how are you');
+    
+//   //   // res.status(200).json({
+//   //   //   status: 'error',
+//   //   //   message: 'An error occured while updating the user 😭',
+//   //   // });
+//   // } catch (error) {console.log(error);
+//   // }
+//   console.log('how are you');
+// })
 
 
 // Update a user

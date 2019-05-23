@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 
+// root url which your project images will be located
+const root = 'https://s3.amazonaws.com/mybucket';
 /**
  * Mongoose User schema which is a description/blueprint of how we want our data to look like
  */
@@ -55,7 +57,22 @@ const UserSchema = new mongoose.Schema({
   },
   user_image: {
     type: String,
+    get: v => `${root}${v}`
   },
+
+  created_date: {
+    type: Date,
+  },
+
+  updated_date: {
+    type: Date,
+    default: null
+  },
+  updated_by: {
+    type:String,
+    default: null
+  }
+  
 });
 
 // Model which provides us with an interface for interacting with our data
