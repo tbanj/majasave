@@ -8,7 +8,6 @@ const randomstring = require('randomstring');
 const passport = require('passport');
 const AuthMiddleware = require('../middlewares/auth');
 const JoiValidator = require('../middlewares/validator');
-
 const { CreateUserValidator } = require('../validators/UserValidator');
 const env = require('../env');
 const router = express.Router();
@@ -20,7 +19,6 @@ const isAuthenticated = (req, res, next) => {
     return next();
   } else {
     console.log('error:'+ 'Sorry, but you must be registered first !');
-    
     res.redirect('/');
   }
 };
@@ -34,9 +32,6 @@ const isNotAuthenticated = (req, res, next) => {
     return next();
   }
 };
-
-
-
 
 
 // Sign up a user
@@ -72,13 +67,9 @@ async function(req, res) {
             Have a pleasant day.</p>`,
         };
         sgMail.send(msg);
-        
-        
-
         res.status(201).json({
           status: '402', 
           message: 'email already exist check your email to verify',
-          
         })
       }
       else {res.status(203).json({
@@ -98,10 +89,8 @@ async function(req, res) {
       ...req.body,
         secret_token: secretToken,
         is_active: false});
-
     const result = user.toJSON();
     console.log(result.user_image);
-    
     delete result.password;
     
     
@@ -130,13 +119,10 @@ async function(req, res) {
         On the following page: http://localhost:3000/user/verify
         Have a pleasant day.</p>`,
     };
-    
     sgMail.send(msg);
-
     
     delete result.secret_token;
     delete result.is_active;
-
     res.status(200).json({
       status: 'success',
       data: { user: result, token },
@@ -149,30 +135,19 @@ async function(req, res) {
     res.status(500).json({
       status: 'error',
       message: 'An error occured while creating your account 😭',
-    });
-
-     
+    }); 
   }
 });
-
-
-
-
-
-
 
 // admin signup
 router.post('/', AuthMiddleware,async function(req, res) {
   try {
     req.body.password = await bcrypt.hash(req.body.password, 10);
-    
     const user = await UserModel.create(req.body);
     const result = user.toJSON();
-    
     delete result.password;
     delete result.secret_token;
     delete result.is_active;
-
     const token = jwt.sign({ id: user.id }, env.jwt_secret, {
       expiresIn: '1h',
     });
@@ -183,9 +158,6 @@ router.post('/', AuthMiddleware,async function(req, res) {
     });
   } catch (err) {
     console.log(err);
-
-
-
     res.status(500).json({
       status: 'error',
       message: 'An error occured while creating your account 😭',
@@ -199,7 +171,6 @@ router.get('/profile', AuthMiddleware, async function(req, res) {
     console.log(req.user);
     const user = await UserModel.findById(req.user);
     const result = user.toJSON();
-    
     delete result.password;
     delete result.secret_token;
     delete result.is_active;
@@ -211,11 +182,8 @@ router.get('/profile', AuthMiddleware, async function(req, res) {
     res.status(401).json({ status: 'error', message: err.message });
   }
 });
-
-
 // user signin
 router.post('/signin', async function (req, res, next) {
-
   passport.authenticate('local', (e, user, info) => {
       if(e) return next(e);
       if(info) {
@@ -255,9 +223,6 @@ router.post('/signin', async function (req, res, next) {
                               }).
                               catch(error=>{console.log(error);
                               });
-          
-          
-       
        return res.send(info);
       }
       req.logIn(user, e => {
@@ -272,8 +237,6 @@ router.post('/signin', async function (req, res, next) {
   })(req, res, next);
 });
 
-
-
 router.post('/verify', async function(req, res, next) {
   try {
     const { secret_token } = req.body;
@@ -284,7 +247,6 @@ router.post('/verify', async function(req, res, next) {
       });
         return;
     }
-
     // Find account with matching secret token
     const user =  await UserModel.findOne({ 'secret_token': secret_token.trim() });
     if (!user) {

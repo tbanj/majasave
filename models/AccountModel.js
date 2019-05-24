@@ -18,9 +18,6 @@ const AccountSchema = new mongoose.Schema({
     required: true,
   },
 
-
-
-  
   success_alert: {
     type: Number,
   },
@@ -28,8 +25,6 @@ const AccountSchema = new mongoose.Schema({
   target_saving: {
     type: Number,
   },
-  
-
   user: {
     // The user ID
     type: String,
@@ -41,12 +36,7 @@ const AccountSchema = new mongoose.Schema({
   },
   package_type: {
     type: Array,
-
 },
-  majasave_flex: {
-    type: Number,
-  },
-
   updated_date: {
     type: Date,
     default: null
