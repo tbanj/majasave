@@ -18,13 +18,33 @@ const AccountSchema = new mongoose.Schema({
     required: true,
   },
 
-  current_balance: {
+
+
+  
+  success_alert: {
     type: Number,
-    default: 0
   },
 
-  created_date: {
-    type: Date,
+  target_saving: {
+    type: Number,
+  },
+  
+
+  user: {
+    // The user ID
+    type: String,
+    required: true,
+  },
+  
+  safe_lock: {
+    type: Number,
+  },
+  package_type: {
+    type: Array,
+
+},
+  majasave_flex: {
+    type: Number,
   },
 
   updated_date: {
@@ -37,26 +57,6 @@ const AccountSchema = new mongoose.Schema({
   },
   created_by: {
     type: String,
-  },
-  success_alert: {
-    type: Number,
-  },
-
-  target_saving: {
-    type: Number,
-  },
-
-  user: {
-    // The user ID
-    type: String,
-    required: true,
-  },
-  
-  safe_lock: {
-    type: Number,
-  },
-  majasave_flex: {
-    type: Number,
   },
 });
 

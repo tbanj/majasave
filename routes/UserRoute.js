@@ -46,7 +46,7 @@ async function(req, res) {
   try {
     
     // Checking if email is already taken
-    const checkUser = await UserModel.findOne({ 'email': req.body.email });
+    const checkUser = await UserModel.findOne({ 'email': req.body.email.trim() });
     if (checkUser) {
       console.log(checkUser);
       
@@ -56,18 +56,18 @@ async function(req, res) {
         const msg = {
           to: checkUser.email,
           from: 'info@majasave.com',
-          subject: 'Verify your majasave account sendgrid',
+          subject: 'Verify your majasave account',
           text: 'and easy to do anywhere, even with Node.js',
           text: `Hi ${req.body.first_name},
           Thank you for registering!
           Please verify your email by typing the following token:
-          Token: ${result.secret_token}
+          Token: ${checkUser.secret_token}
           On the following page: http://localhost:3000/user/verify
           Have a pleasant day.`,
           html: `<p>Hi ${req.body.first_name},
             Thank you for registering!
             Please verify your email by typing the following token:<br>
-            Token id: <strong> ${result.secret_token}</strong> <br>
+            Token id: <strong> ${checkUser.secret_token}</strong> <br>
             On the following page: http://localhost:3000/user/verify
             Have a pleasant day.</p>`,
         };
@@ -103,7 +103,7 @@ async function(req, res) {
     console.log(result.user_image);
     
     delete result.password;
-
+    
     
 
     const token = jwt.sign({ id: user.id }, env.jwt_secret, {
@@ -115,7 +115,7 @@ async function(req, res) {
     const msg = {
       to: req.body.email,
       from: 'info@majasave.com',
-      subject: 'Verify your majasave account sendgrid',
+      subject: 'Verify your majasave account',
       text: 'and easy to do anywhere, even with Node.js',
       text: `Hi ${req.body.first_name},
       Thank you for registering!
@@ -130,8 +130,12 @@ async function(req, res) {
         On the following page: http://localhost:3000/user/verify
         Have a pleasant day.</p>`,
     };
-        sgMail.send(msg);
+    
+    sgMail.send(msg);
 
+    
+    delete result.secret_token;
+    delete result.is_active;
 
     res.status(200).json({
       status: 'success',
@@ -166,6 +170,8 @@ router.post('/', AuthMiddleware,async function(req, res) {
     const result = user.toJSON();
     
     delete result.password;
+    delete result.secret_token;
+    delete result.is_active;
 
     const token = jwt.sign({ id: user.id }, env.jwt_secret, {
       expiresIn: '1h',
@@ -196,6 +202,7 @@ router.get('/profile', AuthMiddleware, async function(req, res) {
     
     delete result.password;
     delete result.secret_token;
+    delete result.is_active;
 
     res.json({ status: 'success', data: result });
   } catch (err) {
@@ -205,24 +212,6 @@ router.get('/profile', AuthMiddleware, async function(req, res) {
   }
 });
 
-// Post investment amount for savings plan
-router.get('/savings-packages', AuthMiddleware, async function(req, res) {
-  try {
-    console.log(req.header);
-    
-    const user = await UserModel.findById(req.user);
-    const result = user.toJSON();
-    
-    delete result.password;
-    delete result.secret_token;
-
-    res.json({ status: 'success', data: result });
-  } catch (err) {
-    console.log(err);
-
-    res.status(401).json({ status: 'error', message: err.message });
-  }
-});
 
 // user signin
 router.post('/signin', async function (req, res, next) {
@@ -230,17 +219,25 @@ router.post('/signin', async function (req, res, next) {
   passport.authenticate('local', (e, user, info) => {
       if(e) return next(e);
       if(info) {
+        console.log(info);
+          
        // Compose email
           UserModel.findOne({ 'email': req.body.email })
                               .then(response=>{
                                 const checkUser = response;
+                                if( checkUser.secret_token === undefined ){
+                                  res.status(404).json({
+                                    status: 'error',
+                                    message: `account has being verified earlier`
+                                  })
+                                return;
+                              }
                                 console.log(checkUser.secret_token);
                                 sgMail.setApiKey(env.sendgrid_api_key);
                                 const msg = {
                                   to: req.body.email,
                                   from: 'info@majasave.com',
-                                  subject: 'Verify your majasave account sendgrid',
-                                  text: 'and easy to do anywhere, even with Node.js',
+                                  subject: 'Verify your majasave account',
                                   text: `Hi ${checkUser.first_name},
                                   Thank you for registering!
                                   Please verify your email by typing the following token:
@@ -269,6 +266,7 @@ router.post('/signin', async function (req, res, next) {
           const result = user.toJSON();
           delete result.password;
           delete result.secret_token;
+          delete result.is_active;
           return res.send({ status: 'success', data: { token, result } });
       });
   })(req, res, next);
@@ -279,9 +277,16 @@ router.post('/signin', async function (req, res, next) {
 router.post('/verify', async function(req, res, next) {
   try {
     const { secret_token } = req.body;
+    if(typeof secret_token !== 'string'){
+      res.status(404).json({
+        status: 'error',
+        message: 'variable type not acceptable. 😭',
+      });
+        return;
+    }
 
     // Find account with matching secret token
-    const user =  await UserModel.findOne({ 'secret_token': secret_token });
+    const user =  await UserModel.findOne({ 'secret_token': secret_token.trim() });
     if (!user) {
       // res.redirect('/user/verify');
       res.status(404).json({
@@ -320,19 +325,6 @@ router.post('/verify', async function(req, res, next) {
   }
 });
 
-
-// router.get('/dashboard', AuthMiddleware, async function(req, res) {
-//   // try {
-//   //   console.log('how are you');
-    
-//   //   // res.status(200).json({
-//   //   //   status: 'error',
-//   //   //   message: 'An error occured while updating the user 😭',
-//   //   // });
-//   // } catch (error) {console.log(error);
-//   // }
-//   console.log('how are you');
-// })
 
 
 // Update a user

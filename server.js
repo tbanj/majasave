@@ -8,6 +8,7 @@ const cors = require('cors');
 const dotenv = require('dotenv').config();
 const UserRoute = require('./routes/UserRoute');
 const AccountRoute = require('./routes/AccountRoute');
+const SavingRoute = require('./routes/SavingRoute');
 const env = require('./env');
 
 const app = express();
@@ -53,6 +54,8 @@ app.use(express.json());
 app.use('/user', UserRoute);
 
 app.use('/account', AccountRoute);
+
+app.use('/saving', SavingRoute);
 
 app.listen(env.port).on('listening', () => {
   console.log('🚀 We are live on ' + env.port);
