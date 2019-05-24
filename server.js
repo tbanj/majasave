@@ -8,7 +8,6 @@ const cors = require('cors');
 const dotenv = require('dotenv').config();
 const UserRoute = require('./routes/UserRoute');
 const AccountRoute = require('./routes/AccountRoute');
-const SavingRoute = require('./routes/SavingRoute');
 const env = require('./env');
 
 const app = express();
@@ -25,17 +24,15 @@ mongoose
 
 app.use(cors());
 
-app.use(session({
-  cookie: { maxAge: 60000 },
-  secret: 'codeworkrsecret',
-  saveUninitialized: false,
-  resave: false
-}));
+// app.use(session({
+//   cookie: { maxAge: 60000 },
+//   secret: 'codeworkrsecret',
+//   saveUninitialized: false,
+//   resave: false
+// }));
 
 app.use(passport.initialize());
 app.use(passport.session());
-
-// app.use(flash());
 
 // Logger middleware
 app.use((req, res, next) => {
@@ -55,7 +52,7 @@ app.use('/user', UserRoute);
 
 app.use('/account', AccountRoute);
 
-app.use('/saving', SavingRoute);
+
 
 app.listen(env.port).on('listening', () => {
   console.log('🚀 We are live on ' + env.port);
