@@ -3,10 +3,11 @@ const joi = require('joi');
 /**
  * Joi Validation schema for validating requests  for leaves.
  */
-exports.CreateAccountValidator = {
+exports.WithdrawalValidator = {
   
-  // account_number: joi.string().required(),
-  // bank_name: joi.string().required(),
+  account_number: joi.string().required(),
+  bank_name: joi.string().required(),
+  account_name: joi.string().required(),
 
   // user: joi.string().default(),
   // majasave_flex: joi.number().default(),

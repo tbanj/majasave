@@ -12,7 +12,7 @@ passport.deserializeUser(async (id, done) => {
     try {
         const user = await User.findById(id);
         done(null, user);
-    } catch(error) {
+    } catch (error) {
         done(error, null);
     }
 });
@@ -26,25 +26,25 @@ passport.use('local', new LocalStrategy({
         // 1) Check if the email already exists
         const user = await User.findOne({ 'email': email }, '+password');
         if (!user) {
-            return done(null, false, { message: 'Unknown User' });
+            return done(null, false, 'invalid email or password inputted');
         }
 
         // 2) Check if the password is correct
         const isValid = await bcrypt.compare(
-                  password,
-                  user.password
-                );
+            password,
+            user.password
+        );
         if (!isValid) {
-            return done(null, false, { message: 'Unknown Password' });
+            return done(null, false, 'invalid email or Password not correct');
         }
 
-        
+
         // 3) Check if email has been verified
         if (!user.is_active) {
-            return done(null, false, { message: 'Sorry, you must validate email first' });
+            return done(null, false, 'Sorry, you must validate email first');
         }
         return done(null, user);
-    } catch(error) {
+    } catch (error) {
         return done(error, false);
     }
 }));
