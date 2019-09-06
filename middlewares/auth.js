@@ -6,9 +6,9 @@ const env = require('../env');
  */
 module.exports = function (req, res, next) {
   try {
-    const authHeader = req.headers.userverify;
-    const authIsAdmin = req.headers.isadmin;
-    const authAdminKey = req.headers.adminkey;
+    const authHeader = req.headers.user_verify;
+    const authIsAdmin = req.headers.is_admin;
+    const authAdminKey = req.headers.admin_key;
 
     if (!(authHeader && authIsAdmin))
       return res.status(401).json({

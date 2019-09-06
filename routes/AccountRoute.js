@@ -533,8 +533,8 @@ router.get('/profile', AuthMiddleware, async function(req, res) {
 
 router.get('', AuthMiddleware,async function(req, res) {
   try {
-    if (req.query.isAdmin) {
-      if (req.query.isAdmin !== adminKey) {
+    if (req.query.is_admin) {
+      if (req.query.is_admin !== adminK_ey) {
         res.status(404).json({status: 'error', message: 'you are not an admin'})
         return;
       }
